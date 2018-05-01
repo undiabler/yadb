@@ -14,7 +14,6 @@ var (
 
 const (
 	FAIL_WRITES = 10
-	BATCH_LEN   = 5000
 	MAX_WORKERS = 20
 )
 
@@ -24,10 +23,10 @@ var (
 	wg      sync.WaitGroup
 )
 
-func (bw *BatchWriter) getObject(obj_chan chan clickhouse.Row, columns clickhouse.Columns, table string, done *sync.WaitGroup) {
+func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Duration, done *sync.WaitGroup) {
 
 	to_write := clickhouse.Rows{}
-	tickChan := time.NewTicker(time.Second * 30).C
+	tickChan := time.NewTicker(tick).C
 
 	need_exit := false
 	defer done.Done()
@@ -41,7 +40,7 @@ func (bw *BatchWriter) getObject(obj_chan chan clickhouse.Row, columns clickhous
 		case item, ok := <-obj_chan:
 
 			if !ok {
-				log.Debugf("CL goroutine %q exiting...", table)
+				log.Debugf("CL goroutine %q exiting...", bw.table)
 				need_exit = true
 				for x := range obj_chan {
 					to_write = append(to_write, x)
@@ -51,7 +50,7 @@ func (bw *BatchWriter) getObject(obj_chan chan clickhouse.Row, columns clickhous
 				// log.Debug("New elem")
 			}
 
-			if len(to_write) > BATCH_LEN {
+			if len(to_write) > bw.bulk_items {
 				need_write = true
 			}
 
@@ -64,38 +63,37 @@ func (bw *BatchWriter) getObject(obj_chan chan clickhouse.Row, columns clickhous
 
 			for i := 0; i < FAIL_WRITES; i++ {
 
-				// log.Debugf("Start writing (%d) objects to (%s)...", len(to_write), table)
+				// log.Debugf("Start writing (%d) objects to (%s)...", len(to_write), bw.table)
 
-				if CLICKHOUSE == "" {
-
+				if bw.getConn == nil {
 					log.Debug("DB skip...")
 					to_write = to_write[:0]
 					break
-
 				}
 
-				conn := clickhouse.NewConn(CLICKHOUSE, clickhouse.NewHttpTransport())
-				query, err := clickhouse.BuildMultiInsert(table,
-					columns,
+				query, err := clickhouse.BuildMultiInsert(bw.table,
+					bw.columns,
 					to_write,
 				)
 
 				if err == nil {
 
+					conn := bw.getConn()
+
 					err = query.Exec(conn)
 
 					if err == nil {
 
-						log.Debugf("Db %q: %d", table, len(to_write))
+						log.Debugf("Db %q: %d", bw.table, len(to_write))
 						to_write = to_write[:0]
 						break
 
 					} else {
-						log.Warningf("Error db %q: %s", table, err)
+						log.Warningf("Error db %q: %s", bw.table, err)
 					}
 
 				} else {
-					log.Errorf("Build %q request fail: %s - %v", table, err, to_write)
+					log.Errorf("Build %q request fail: %s - %v", bw.table, err, to_write)
 				}
 
 				time.Sleep(time.Second)
