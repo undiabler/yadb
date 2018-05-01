@@ -2,25 +2,40 @@ package yadb
 
 import (
 	"errors"
-	"time"
-
+	"fmt"
 	"github.com/roistat/go-clickhouse"
+	"time"
 )
 
+// write records into table in async way with batching
 type BatchWriter struct {
 	columns    clickhouse.Columns
 	bulk_items int
 	ticker     time.Duration
+
+	work chan clickhouse.Row
 
 	getConn func() *clickhouse.Conn
 }
 
 func NewBatchWriter(columns []string, bulk_items int, ticker time.Duration) (*BatchWriter, error) {
 
+	if bulk_items <= 1 {
+		return nil, fmt.Errorf("Bulk must be greater than 1. Have %d", bulk_items)
+	}
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("No columns for request")
+	}
+
 	bw := new(BatchWriter)
 	bw.columns = columns.(clickhouse.Columns)
 	bw.bulk_items = bulk_items
 	bw.ticker = ticker
+
+	bw.work = make(chan clickhouse.Row, bulk_items)
+
+	wg.Add(1)
+	go bw.getObjects(obj_chan, ticker, wg)
 
 	return bw, nil
 
