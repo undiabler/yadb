@@ -1,7 +1,7 @@
 package yadb
 
 import (
-	"github.com/roistat/go-clickhouse"
+	"github.com/mintance/go-clickhouse"
 	log "github.com/sirupsen/logrus"
 
 	"fmt"
