@@ -4,6 +4,7 @@ import (
 	"github.com/roistat/go-clickhouse"
 	log "github.com/sirupsen/logrus"
 
+	"fmt"
 	"sync"
 	"time"
 )
@@ -22,6 +23,24 @@ var (
 	workers = make(chan chan clickhouse.Row, MAX_WORKERS)
 	wg      sync.WaitGroup
 )
+
+func (bw *BatchWriter) InsertMap(fields map[string]interface{}) error {
+
+	row := make(clickhouse.Row, 0, len(bw.columns))
+
+	for _, column := range bw.columns {
+
+		if tmp, ok := fields[column]; ok {
+			row = append(row, tmp)
+		} else {
+			return fmt.Errorf("Missed column %q", column)
+		}
+
+	}
+
+	bw.work <- row
+	return nil
+}
 
 func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Duration, done *sync.WaitGroup) {
 

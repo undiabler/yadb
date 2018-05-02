@@ -3,8 +3,9 @@ package yadb
 import (
 	"errors"
 	"fmt"
-	"github.com/roistat/go-clickhouse"
 	"time"
+
+	"github.com/roistat/go-clickhouse"
 )
 
 // write records into table in async way with batching
