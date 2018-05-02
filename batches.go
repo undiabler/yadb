@@ -2,9 +2,11 @@ package yadb
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/labstack/gommon/log"
 	"github.com/mintance/go-clickhouse"
 )
 
@@ -21,6 +23,12 @@ type BatchWriter struct {
 
 	getConn func() *clickhouse.Conn
 }
+
+// TODO: threadsafe workers map
+var (
+	workers = map[*BatchWriter]bool{}
+	wg      sync.WaitGroup
+)
 
 func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.Duration) (*BatchWriter, error) {
 
@@ -47,7 +55,7 @@ func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.
 	// TODO: this is unsafe
 	workers[bw] = true
 
-	go bw.getObjects(bw.work, ticker, &wg)
+	go bw.worker(ticker, &wg)
 
 	return bw, nil
 
@@ -64,4 +72,17 @@ func (bw *BatchWriter) IsClosed() bool {
 func (bw *BatchWriter) Close() {
 	atomic.StoreInt32(bw.closeFlag, 0)
 	close(bw.work)
+}
+
+func CloseAll() {
+
+	log.Debug("Clickhouse goroutines exiting...")
+
+	// close all registered workers
+	for worker, _ := range workers {
+		worker.Close()
+	}
+
+	// ждем пока все горутины допишут и выйдут
+	wg.Wait()
 }

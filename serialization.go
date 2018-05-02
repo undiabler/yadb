@@ -3,6 +3,8 @@ package yadb
 import (
 	"fmt"
 	"reflect"
+
+	clickhouse "github.com/mintance/go-clickhouse"
 	// log "github.com/sirupsen/logrus"
 )
 
@@ -37,5 +39,27 @@ func (bw *BatchWriter) InsertStruct(f interface{}) error {
 
 	// TODO: try to convert to ToMap struct
 	// TODO: seria call for getting map
+	return nil
+}
+
+func (bw *BatchWriter) InsertMap(fields map[string]interface{}) error {
+
+	if bw.IsClosed() {
+		return fmt.Errorf("Goroutine cant accept data")
+	}
+
+	row := make(clickhouse.Row, 0, len(bw.columns))
+
+	for _, column := range bw.columns {
+
+		if tmp, ok := fields[column]; ok {
+			row = append(row, tmp)
+		} else {
+			return fmt.Errorf("Missed column %q", column)
+		}
+
+	}
+
+	bw.work <- row
 	return nil
 }

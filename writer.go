@@ -4,49 +4,15 @@ import (
 	"github.com/mintance/go-clickhouse"
 	log "github.com/sirupsen/logrus"
 
-	"fmt"
 	"sync"
 	"time"
 )
 
-var (
-	CLICKHOUSE = ":8123"
-)
-
 const (
 	FAIL_WRITES = 10
-	MAX_WORKERS = 20
 )
 
-// TODO: теперь есть баг с ситуацией когда еще пишут в каналы а мы закрыли их!!
-var (
-	workers = map[*BatchWriter]bool{}
-	wg      sync.WaitGroup
-)
-
-func (bw *BatchWriter) InsertMap(fields map[string]interface{}) error {
-
-	if bw.IsClosed() {
-		return fmt.Errorf("Goroutine cant accept data")
-	}
-
-	row := make(clickhouse.Row, 0, len(bw.columns))
-
-	for _, column := range bw.columns {
-
-		if tmp, ok := fields[column]; ok {
-			row = append(row, tmp)
-		} else {
-			return fmt.Errorf("Missed column %q", column)
-		}
-
-	}
-
-	bw.work <- row
-	return nil
-}
-
-func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Duration, done *sync.WaitGroup) {
+func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 	to_write := clickhouse.Rows{}
 	tickChan := time.NewTicker(tick).C
@@ -61,12 +27,12 @@ func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Durati
 		select {
 
 		// regular getting items
-		case item, ok := <-obj_chan:
+		case item, ok := <-bw.work:
 
 			if !ok {
 				log.Debugf("CL goroutine %q exiting...", bw.table)
 				need_exit = true
-				for x := range obj_chan {
+				for x := range bw.work {
 					to_write = append(to_write, x)
 				}
 			} else {
@@ -137,17 +103,4 @@ func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Durati
 
 	}
 
-}
-
-func CloseAll() {
-
-	log.Debug("Clickhouse goroutines exiting...")
-
-	// close all registered workers
-	for worker, _ := range workers {
-		worker.Close()
-	}
-
-	// ждем пока все горутины допишут и выйдут
-	wg.Wait()
 }
