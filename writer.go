@@ -20,11 +20,15 @@ const (
 
 // TODO: теперь есть баг с ситуацией когда еще пишут в каналы а мы закрыли их!!
 var (
-	workers = make(chan chan clickhouse.Row, MAX_WORKERS)
+	workers = map[*BatchWriter]bool{}
 	wg      sync.WaitGroup
 )
 
 func (bw *BatchWriter) InsertMap(fields map[string]interface{}) error {
+
+	if bw.IsClosed() {
+		return fmt.Errorf("Goroutine cant accept data")
+	}
 
 	row := make(clickhouse.Row, 0, len(bw.columns))
 
@@ -56,6 +60,7 @@ func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Durati
 
 		select {
 
+		// regular getting items
 		case item, ok := <-obj_chan:
 
 			if !ok {
@@ -66,42 +71,43 @@ func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Durati
 				}
 			} else {
 				to_write = append(to_write, item)
-				// log.Debug("New elem")
 			}
 
-			if len(to_write) > bw.bulk_items {
-				need_write = true
-			}
-
+		// regular inserts on tick
 		case <-tickChan:
 			need_write = true
 
 		}
 
+		if len(to_write) >= bw.bulk_items {
+			need_write = true
+		}
+
 		if (need_exit || need_write) && len(to_write) > 0 {
+
+			if bw.getConn == nil {
+				log.Warn("Skip db inserting!")
+				to_write = to_write[:0]
+				continue
+			}
+
+			query, err := clickhouse.BuildMultiInsert(bw.table,
+				bw.columns,
+				to_write,
+			)
+
+			if err != nil {
+				log.Errorf("Build %q request fail: %s - %v", bw.table, err, to_write)
+				continue
+			}
 
 			for i := 0; i < FAIL_WRITES; i++ {
 
-				// log.Debugf("Start writing (%d) objects to (%s)...", len(to_write), bw.table)
+				log.Debugf("Start writing (%d) objects to (%s)...", len(to_write), bw.table)
 
-				if bw.getConn == nil {
-					log.Debug("DB skip...")
-					to_write = to_write[:0]
-					break
-				}
+				if conn := bw.getConn(); conn != nil {
 
-				query, err := clickhouse.BuildMultiInsert(bw.table,
-					bw.columns,
-					to_write,
-				)
-
-				if err == nil {
-
-					conn := bw.getConn()
-
-					err = query.Exec(conn)
-
-					if err == nil {
+					if err := query.Exec(conn); err == nil {
 
 						log.Debugf("Db %q: %d", bw.table, len(to_write))
 						to_write = to_write[:0]
@@ -110,9 +116,8 @@ func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Durati
 					} else {
 						log.Warningf("Error db %q: %s", bw.table, err)
 					}
-
 				} else {
-					log.Errorf("Build %q request fail: %s - %v", bw.table, err, to_write)
+					log.Warningf("No active connections to db")
 				}
 
 				time.Sleep(time.Second)
@@ -134,17 +139,13 @@ func (bw *BatchWriter) getObjects(obj_chan chan clickhouse.Row, tick time.Durati
 
 }
 
-func Wait() {
+func CloseAll() {
 
 	log.Debug("Clickhouse goroutines exiting...")
-	// закрываем буферезированный канал воркеров чтоб выйти из него range-ом
-	close(workers)
 
-	// получаем все ранее созданные каналы
-	for worker := range workers {
-
-		// закрываем каждый из этих каналов чтоб они завершились
-		close(worker)
+	// close all registered workers
+	for worker, _ := range workers {
+		worker.Close()
 	}
 
 	// ждем пока все горутины допишут и выйдут
