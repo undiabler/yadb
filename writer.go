@@ -80,7 +80,7 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 						break
 
 					} else {
-						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(to_write), bw.table, conn.Host)
+						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(to_write), bw.table, conn.Host, err)
 					}
 				} else {
 					log.Warningf("No active connections to db")
