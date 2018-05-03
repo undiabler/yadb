@@ -69,9 +69,9 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 			for i := 0; i < FAIL_WRITES; i++ {
 
-				log.Debugf("Start writing (%d) objects to (%s)...", len(to_write), bw.table)
-
 				if conn := bw.getConn(); conn != nil {
+
+					log.Debugf("Bulk inserting %d recs into %q (host: %s)", len(to_write), bw.table, conn.Host)
 
 					if err := query.Exec(conn); err == nil {
 
@@ -80,7 +80,7 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 						break
 
 					} else {
-						log.Warningf("Error db %q: %s", bw.table, err)
+						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(to_write), bw.table, conn.Host)
 					}
 				} else {
 					log.Warningf("No active connections to db")
@@ -91,7 +91,7 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 			}
 
 			if len(to_write) > 0 {
-				log.Errorf("Too many fails, ignore %d items! Dump:%++v", len(to_write), to_write)
+				log.Errorf("Too many fails, lost %d recs! Dump:%++v", len(to_write), to_write)
 				to_write = to_write[:0]
 			}
 
