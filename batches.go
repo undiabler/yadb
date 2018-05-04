@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/labstack/gommon/log"
-	"github.com/mintance/go-clickhouse"
+	log "github.com/sirupsen/logrus"
+	clickhouse "github.com/undiabler/clickhouse-driver"
 )
 
 // write records into table in async way with batching
@@ -21,7 +21,7 @@ type BatchWriter struct {
 	done      chan bool
 	closeFlag *int32
 
-	getConn func() *clickhouse.Conn
+	getConn func() clickhouse.Connector
 }
 
 // TODO: threadsafe workers map
@@ -61,7 +61,7 @@ func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.
 
 }
 
-func (bw *BatchWriter) SetConn(f func() *clickhouse.Conn) {
+func (bw *BatchWriter) SetConn(f func() clickhouse.Connector) {
 	bw.getConn = f
 }
 

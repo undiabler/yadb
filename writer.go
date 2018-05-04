@@ -1,8 +1,8 @@
 package yadb
 
 import (
-	"github.com/mintance/go-clickhouse"
 	log "github.com/sirupsen/logrus"
+	clickhouse "github.com/undiabler/clickhouse-driver"
 
 	"sync"
 	"time"
@@ -62,6 +62,8 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 				to_write,
 			)
 
+			log.Debugf("Query: %s", query)
+
 			if err != nil {
 				log.Errorf("Build %q request fail: %s - %v", bw.table, err, to_write)
 				continue
@@ -71,7 +73,7 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 				if conn := bw.getConn(); conn != nil {
 
-					log.Debugf("Bulk inserting %d recs into %q (host: %s)", len(to_write), bw.table, conn.Host)
+					log.Debugf("Bulk inserting %d recs into %q (host: %s)", len(to_write), bw.table, conn.GetHost())
 
 					if err := query.Exec(conn); err == nil {
 
@@ -80,7 +82,7 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 						break
 
 					} else {
-						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(to_write), bw.table, conn.Host, err)
+						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(to_write), bw.table, conn.GetHost(), err)
 					}
 				} else {
 					log.Warningf("No active connections to db")

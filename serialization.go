@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	clickhouse "github.com/mintance/go-clickhouse"
+	clickhouse "github.com/undiabler/clickhouse-driver"
 	// log "github.com/sirupsen/logrus"
 )
 
