@@ -1,8 +1,9 @@
 # yadb
-Golang [Yandex ClickHouse](https://clickhouse.yandex/) bulk wrapper for [clickhouse driver](github.com/undiabler/clickhouse-driver/)
+Golang [Yandex ClickHouse](https://clickhouse.yandex/) bulk wrapper for [clickhouse driver](https://github.com/undiabler/clickhouse-driver/)
 
 ### About 
-Clickhouse reccomends to insert data using large batches. Also using replication tables with 1 rec per insert will make you requests slower.  
+Clickhouse reccomends to insert data using large batches.  
+Also using replication tables with 1 rec per insert will make you requests slower.  
 This package helps to group incoming data on fly. It also controlls pauses to prevent long stacking data.
 
 ### Example 
@@ -29,7 +30,8 @@ func main() {
 			event_type UInt8,
 			event_time DateTime,
 			event_date Date
-		) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/hits', '{replica}', event_date, intHash32(uuid), (intHash32(uuid), event_type, event_date), 8192)
+		) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/hits', '{replica}', 
+		event_date, intHash32(uuid), (intHash32(uuid), event_type, event_date), 8192)
 	*/
 
 	events, err := yadb.NewBatchWriter(
