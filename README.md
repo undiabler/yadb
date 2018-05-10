@@ -1,3 +1,9 @@
+[![Travis status](https://img.shields.io/travis/undiabler/yadb.svg)](https://travis-ci.org/undiabler/yadb) 
+[![GoDoc](https://godoc.org/github.com/undiabler/yadb?status.svg)](https://godoc.org/github.com/undiabler/yadb)
+[![Go Report](https://goreportcard.com/badge/github.com/undiabler/yadb)](https://goreportcard.com/report/github.com/undiabler/yadb) 
+[![Coverage Status](https://img.shields.io/coveralls/undiabler/yadb.svg)](https://coveralls.io/github/undiabler/yadb) 
+![](https://img.shields.io/github/license/undiabler/clickhouse-driver.svg)
+
 # yadb
 Golang [Yandex ClickHouse](https://clickhouse.yandex/) bulk wrapper for [clickhouse driver](https://github.com/undiabler/clickhouse-driver/)
 
