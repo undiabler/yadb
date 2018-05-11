@@ -46,7 +46,7 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 		}
 
-		if len(to_write) >= bw.bulk_items {
+		if len(to_write) >= bw.bulkItems {
 			need_write = true
 		}
 

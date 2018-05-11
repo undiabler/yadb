@@ -12,10 +12,10 @@ import (
 
 // BatchWriter write records into table in async way with batching
 type BatchWriter struct {
-	columns    clickhouse.Columns
-	bulk_items int
-	ticker     time.Duration
-	table      string
+	columns   clickhouse.Columns
+	bulkItems int
+	ticker    time.Duration
+	table     string
 
 	work      chan clickhouse.Row
 	done      chan bool
@@ -31,10 +31,10 @@ var (
 )
 
 // NewBatchWriter return BatchWriter with working goroutine inside
-func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.Duration) (*BatchWriter, error) {
+func NewBatchWriter(table string, columns []string, bulkItems int, ticker time.Duration) (*BatchWriter, error) {
 
-	if bulk_items <= 1 {
-		return nil, fmt.Errorf("Bulk must be greater than 1. Have %d", bulk_items)
+	if bulkItems <= 1 {
+		return nil, fmt.Errorf("Bulk must be greater than 1. Have %d", bulkItems)
 	}
 	if len(columns) == 0 {
 		return nil, fmt.Errorf("No columns for request")
@@ -42,13 +42,13 @@ func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.
 
 	bw := new(BatchWriter)
 	bw.columns = columns
-	bw.bulk_items = bulk_items
+	bw.bulkItems = bulkItems
 	bw.ticker = ticker
 	bw.table = table
 	bw.closeFlag = new(int32)
 	atomic.StoreInt32(bw.closeFlag, 1)
 
-	bw.work = make(chan clickhouse.Row, bulk_items)
+	bw.work = make(chan clickhouse.Row, bulkItems)
 	bw.done = make(chan bool)
 
 	wg.Add(1)
@@ -85,7 +85,7 @@ func CloseAll() {
 	log.Debug("Clickhouse goroutines exiting...")
 
 	// close all registered workers
-	for worker, _ := range workers {
+	for worker := range workers {
 		worker.Close()
 	}
 
