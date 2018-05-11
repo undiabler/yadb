@@ -10,7 +10,7 @@ import (
 	clickhouse "github.com/undiabler/clickhouse-driver"
 )
 
-// write records into table in async way with batching
+// BatchWriter write records into table in async way with batching
 type BatchWriter struct {
 	columns    clickhouse.Columns
 	bulk_items int
@@ -30,6 +30,7 @@ var (
 	wg      sync.WaitGroup
 )
 
+// NewBatchWriter return BatchWriter with working goroutine inside
 func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.Duration) (*BatchWriter, error) {
 
 	if bulk_items <= 1 {
@@ -61,20 +62,24 @@ func NewBatchWriter(table string, columns []string, bulk_items int, ticker time.
 
 }
 
+// SetConn defines callback that should return Connector to run MultiInsert query
 func (bw *BatchWriter) SetConn(f func() clickhouse.Connector) {
 	bw.getConn = f
 }
 
+// IsClosed check if BatchWriter is closed
 func (bw *BatchWriter) IsClosed() bool {
 	return atomic.LoadInt32(bw.closeFlag) == 0
 }
 
+// Close close all chans, stop working goroutine.
 func (bw *BatchWriter) Close() {
 	if atomic.SwapInt32(bw.closeFlag, 0) == 1 {
 		close(bw.work)
 	}
 }
 
+// CloseAll stop any working BatchWriters. Safely wait for inserting all queued records.
 func CloseAll() {
 
 	log.Debug("Clickhouse goroutines exiting...")
@@ -84,6 +89,6 @@ func CloseAll() {
 		worker.Close()
 	}
 
-	// ждем пока все горутины допишут и выйдут
+	// wait all goroutines to exit safely
 	wg.Wait()
 }

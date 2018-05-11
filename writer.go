@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	// FAIL_WRITES number of tries to get new connection and exec query
 	FAIL_WRITES = 10
 )
 

@@ -35,6 +35,7 @@ func seria(f interface{}) {
 	}
 }
 
+// InsertStruct get fields from struct using reflect and write them as map to DB
 func (bw *BatchWriter) InsertStruct(f interface{}) error {
 
 	// TODO: try to convert to ToMap struct
@@ -42,6 +43,7 @@ func (bw *BatchWriter) InsertStruct(f interface{}) error {
 	return nil
 }
 
+// InsertMap get fields map and add them to BatchWriter queue
 func (bw *BatchWriter) InsertMap(fields map[string]interface{}) error {
 
 	if bw.IsClosed() {
