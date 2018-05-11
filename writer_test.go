@@ -9,29 +9,30 @@ import (
 	clickhouse "github.com/undiabler/clickhouse-driver"
 )
 
-var calls = 0
-
 type mockTransport struct {
 	response string
+	calls    int
 }
 
 type badTransport struct {
 	response string
 	err      error
+	calls    int
 }
 
-func (m mockTransport) Exec(host, params string, q clickhouse.Query, readOnly bool) (r string, err error) {
-	calls++
+func (m *mockTransport) Exec(host, params string, q clickhouse.Query, readOnly bool) (r string, err error) {
+	m.calls++
 	return m.response, nil
 }
 
-func (m badTransport) Exec(host, params string, q clickhouse.Query, readOnly bool) (r string, err error) {
+func (m *badTransport) Exec(host, params string, q clickhouse.Query, readOnly bool) (r string, err error) {
+	m.calls++
 	return "", m.err
 }
 
 func TestWriter(t *testing.T) {
 
-	tr := mockTransport{response: "Ok."}
+	tr := &mockTransport{response: "Ok."}
 	conn := clickhouse.NewConn("host.local", tr)
 	/*
 		CREATE TABLE events (
@@ -61,7 +62,7 @@ func TestWriter(t *testing.T) {
 	}
 
 	time.Sleep(time.Second)
-	assert.Equal(t, 1, calls)
+	assert.Equal(t, 1, tr.calls)
 	time.Sleep(time.Second)
 
 	events.InsertMap(map[string]interface{}{
@@ -72,7 +73,7 @@ func TestWriter(t *testing.T) {
 	})
 
 	time.Sleep(time.Second)
-	assert.Equal(t, 2, calls)
+	assert.Equal(t, 2, tr.calls)
 
 	events.InsertMap(map[string]interface{}{
 		"uuid":       "prog_test3",
@@ -82,5 +83,5 @@ func TestWriter(t *testing.T) {
 	})
 
 	CloseAll()
-	assert.Equal(t, 3, calls)
+	assert.Equal(t, 3, tr.calls)
 }

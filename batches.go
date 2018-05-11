@@ -70,8 +70,9 @@ func (bw *BatchWriter) IsClosed() bool {
 }
 
 func (bw *BatchWriter) Close() {
-	atomic.StoreInt32(bw.closeFlag, 0)
-	close(bw.work)
+	if atomic.SwapInt32(bw.closeFlag, 0) == 1 {
+		close(bw.work)
+	}
 }
 
 func CloseAll() {
