@@ -13,6 +13,8 @@ type TestStruct struct {
 	Type     int    `db:"event_type"`
 	Date     string `db:"event_date"`
 	DateTime string `db:"event_time"`
+	EmptyVal string
+	SkipVal  string `db:"-"`
 }
 
 func TestSeria(t *testing.T) {
