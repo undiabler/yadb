@@ -51,6 +51,10 @@ func TestSeria(t *testing.T) {
 	map3 := seria(reflect.ValueOf(str1))
 	assert.Equal(t, map1, map3)
 
+	var map0 map[string]interface{}
+	map4 := seria(reflect.ValueOf(nil))
+	assert.Equal(t, map0, map4)
+
 	errw2 := bw.InsertStruct(&str1)
 	assert.NoError(t, errw2)
 
