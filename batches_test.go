@@ -44,6 +44,21 @@ func TestWriterErrors(t *testing.T) {
 	assert.Equal(t, 0, tr.calls)
 
 	bw.SetConn(func() clickhouse.Connector {
+		return nil
+	})
+
+	// no conn
+	bw.InsertMap(map[string]interface{}{
+		"uuid":       "prog_test3",
+		"event_type": 4,
+		"event_date": time.Now().Format("2006-01-02"),
+		"event_time": time.Now().Format("2006-01-02 15:04:05"),
+	})
+	time.Sleep(11 * time.Second)
+
+	assert.Equal(t, 0, tr.calls)
+
+	bw.SetConn(func() clickhouse.Connector {
 		return conn
 	})
 

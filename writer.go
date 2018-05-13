@@ -15,15 +15,15 @@ const (
 
 func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
-	to_write := clickhouse.Rows{}
+	toWrite := clickhouse.Rows{}
 	tickChan := time.NewTicker(tick).C
 
-	need_exit := false
+	needExit := false
 	defer done.Done()
 
 	for {
 
-		need_write := false
+		needWrite := false
 
 		select {
 
@@ -32,41 +32,41 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 			if !ok {
 				log.Debugf("CL goroutine %q exiting...", bw.table)
-				need_exit = true
+				needExit = true
 				for x := range bw.work {
-					to_write = append(to_write, x)
+					toWrite = append(toWrite, x)
 				}
 			} else {
-				to_write = append(to_write, item)
+				toWrite = append(toWrite, item)
 			}
 
 		// regular inserts on tick
 		case <-tickChan:
-			need_write = true
+			needWrite = true
 
 		}
 
-		if len(to_write) >= bw.bulkItems {
-			need_write = true
+		if len(toWrite) >= bw.bulkItems {
+			needWrite = true
 		}
 
-		if (need_exit || need_write) && len(to_write) > 0 {
+		if (needExit || needWrite) && len(toWrite) > 0 {
 
 			if bw.getConn == nil {
 				log.Warn("Skip db inserting!")
-				to_write = to_write[:0]
+				toWrite = toWrite[:0]
 				continue
 			}
 
 			query, err := clickhouse.BuildMultiInsert(bw.table,
 				bw.columns,
-				to_write,
+				toWrite,
 			)
 
 			log.Debugf("Query: %s", query)
 
 			if err != nil {
-				log.Errorf("Build %q request fail: %s - %v", bw.table, err, to_write)
+				log.Errorf("Build %q request fail: %s - %v", bw.table, err, toWrite)
 				continue
 			}
 
@@ -74,16 +74,16 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 				if conn := bw.getConn(); conn != nil {
 
-					log.Debugf("Bulk inserting %d recs into %q (host: %s)", len(to_write), bw.table, conn.GetHost())
+					log.Debugf("Bulk inserting %d recs into %q (host: %s)", len(toWrite), bw.table, conn.GetHost())
 
 					if err := query.Exec(conn); err == nil {
 
-						log.Debugf("Db %q: %d", bw.table, len(to_write))
-						to_write = to_write[:0]
+						log.Debugf("Db %q: %d", bw.table, len(toWrite))
+						toWrite = toWrite[:0]
 						break
 
 					} else {
-						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(to_write), bw.table, conn.GetHost(), err)
+						log.Warningf("Bulk failed %d recs into %q (host: %s): %s", len(toWrite), bw.table, conn.GetHost(), err)
 					}
 				} else {
 					log.Warningf("No active connections to db")
@@ -93,14 +93,14 @@ func (bw *BatchWriter) worker(tick time.Duration, done *sync.WaitGroup) {
 
 			}
 
-			if len(to_write) > 0 {
-				log.Errorf("Too many fails, lost %d recs! Dump:%++v", len(to_write), to_write)
-				to_write = to_write[:0]
+			if len(toWrite) > 0 {
+				log.Errorf("Too many fails, lost %d recs! Dump:%++v", len(toWrite), toWrite)
+				toWrite = toWrite[:0]
 			}
 
 		}
 
-		if need_exit {
+		if needExit {
 			return
 		}
 
