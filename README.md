@@ -90,7 +90,7 @@ func main() {
 
 - [X] Inserting
 - [x] Gracefull exit
-- [ ] Struct mapping
+- [x] Struct mapping
 - [x] Tests
 - [x] Travis/Coverage/Goreport
 - [ ] Unlimited queue
